@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Gun Shooting Game</title>
+<style>
+body {
+  margin: 0;
+  background: #111;
+  color: white;
+  text-align: center;
+  font-family: Arial;
+}
+canvas {
+  background: #222;
+  display: block;
+  margin: 15px auto;
+  border: 3px solid #0f0;
+}
+</style>
+</head>
+<body>
+
+<h1>🔫 SHOOTING GAME</h1>
+<h2>Score: <span id="score">0</span></h2>
+<p>WASD / Arrow Keys to move | Mouse to aim | Click to shoot</p>
+
+<canvas id="game" width="800" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = { x: 400, y: 250, size: 20, speed: 4 };
+let bullets = [];
+let enemies = [];
+let keys = {};
+let score = 0;
+let mouse = { x: 400, y: 250 };
+
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+canvas.addEventListener("mousemove", e => {
+  const r = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - r.left;
+  mouse.y = e.clientY - r.top;
+});
+
+canvas.addEventListener("click", () => {
+  let angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+  bullets.push({
+    x: player.x,
+    y: player.y,
+    dx: Math.cos(angle)*9,
+    dy: Math.sin(angle)*9
+  });
+});
+
+function spawnEnemy() {
+  let side = Math.floor(Math.random()*4);
+  let x = side < 2 ? Math.random()*800 : (side===2 ? 0 : 800);
+  let y = side >= 2 ? Math.random()*500 : (side===0 ? 0 : 500);
+  enemies.push({x,y,size:18,speed:1+score/100});
+}
+
+setInterval(spawnEnemy, 1200);
+
+function update() {
+  if(keys["w"] || keys["arrowup"]) player.y -= player.speed;
+  if(keys["s"] || keys["arrowdown"]) player.y += player.speed;
+  if(keys["a"] || keys["arrowleft"]) player.x -= player.speed;
+  if(keys["d"] || keys["arrowright"]) player.x += player.speed;
+
+  player.x = Math.max(20,Math.min(780,player.x));
+  player.y = Math.max(20,Math.min(480,player.y));
+
+  bullets.forEach(b => {
+    b.x += b.dx;
+    b.y += b.dy;
+  });
+
+  bullets = bullets.filter(b =>
+    b.x > 0 && b.x < 800 && b.y > 0 && b.y < 500
+  );
+
+  enemies.forEach((e, i) => {
+    let angle = Math.atan2(player.y-e.y,player.x-e.x);
+    e.x += Math.cos(angle)*e.speed;
+    e.y += Math.sin(angle)*e.speed;
+
+    bullets.forEach((b,j) => {
+      if(Math.hypot(b.x-e.x,b.y-e.y)<e.size) {
+        enemies.splice(i,1);
+        bullets.splice(j,1);
+        score += 10;
+        document.getElementById("score").textContent = score;
+      }
+    });
+  });
+
+  enemies = enemies.filter(e =>
+    Math.hypot(e.x-player.x,e.y-player.y)>25
+  );
+}
+
+function draw() {
+  ctx.clearRect(0,0,800,500);
+
+  // Player
+  ctx.fillStyle = "#00ff00";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
+  ctx.fill();
+
+  // Gun direction
+  let angle = Math.atan2(mouse.y-player.y,mouse.x-player.x);
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(player.x,player.y);
+  ctx.lineTo(player.x+Math.cos(angle)*35,
+             player.y+Math.sin(angle)*35);
+  ctx.stroke();
+
+  // Bullets
+  ctx.fillStyle = "yellow";
+  bullets.forEach(b => {
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,5,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // Enemies
+  ctx.fillStyle = "red";
+  enemies.forEach(e => {
+    ctx.beginPath();
+    ctx.arc(e.x,e.y,e.size,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
